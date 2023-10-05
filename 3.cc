@@ -64,7 +64,7 @@ main (int argc, char *argv[])
   // uint32_t seed = 54321; // Random seed value
   // RngSeedManager::SetSeed(seed);
   //enable RTS/CTS mode 
-  // Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue("0"));
+  Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue("1"));
 //###################################################################
 
 
@@ -155,14 +155,14 @@ main (int argc, char *argv[])
       // positionAlloc->Add(Vector(15.0, 8.7, 1.0));        // STA 4 (right)
       // Set positions for STAs and AP
       positionAlloc->Add(Vector(0.0, 0.0, 1.0));       // STA 1
-      positionAlloc->Add(Vector(10.0, 0.0, 1.0));      // STA 2 (5 meters to the right of AP)
+      positionAlloc->Add(Vector(125, 0.0, 1.0));      // STA 2 (5 meters to the right of AP)
 
       mobility.SetPositionAllocator (positionAlloc);
       mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
       mobility.Install (stas);
       Ptr<ListPositionAllocator> positionAllocAP = CreateObject<ListPositionAllocator> ();
       // positionAllocAP->Add (Vector (5.0, 8.6, 1.0));
-      positionAllocAP->Add(Vector(5.0, 0.0, 1.0));        // AP in the middle
+      positionAllocAP->Add(Vector(125, 0.0, 1.0));        // AP in the middle
 
       mobility.SetPositionAllocator (positionAllocAP);
       mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
