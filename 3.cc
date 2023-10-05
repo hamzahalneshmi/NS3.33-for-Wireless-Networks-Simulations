@@ -29,6 +29,10 @@
 #include "ns3/yans-wifi-channel.h"
 #include "ns3/yans-wifi-helper.h"
 #include "ns3/olsr-module.h"
+#include "ns3/flow-monitor-helper.h"
+#include "ns3/ipv4-flow-classifier.h"
+
+
 
 #include <iostream>
 
@@ -60,7 +64,7 @@ main (int argc, char *argv[])
   // uint32_t seed = 54321; // Random seed value
   // RngSeedManager::SetSeed(seed);
   //enable RTS/CTS mode 
-  // Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue("0"));
+  Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue("0"));
 //###################################################################
 
 
@@ -149,8 +153,10 @@ main (int argc, char *argv[])
       // positionAlloc->Add(Vector(10.0, 0.0, 1.0));        // STA 2 (left)
       // positionAlloc->Add(Vector(5.0, 8.7, 1.0));         // STA 3 (right)
       // positionAlloc->Add(Vector(15.0, 8.7, 1.0));        // STA 4 (right)
+      // Set positions for STAs and AP
       positionAlloc->Add(Vector(0.0, 0.0, 1.0));       // STA 1
       positionAlloc->Add(Vector(10.0, 0.0, 1.0));      // STA 2 (5 meters to the right of AP)
+
       mobility.SetPositionAllocator (positionAlloc);
       mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
       mobility.Install (stas);
@@ -193,12 +199,12 @@ ApplicationContainer onOffApp2; // For sending from Node(2) to Node(1)
     onOffHelper1.SetAttribute("PacketSize", UintegerValue(1000));
     onOffApp1.Add(onOffHelper1.Install(stas.Get(0)));
 
-    OnOffHelper onOffHelper2("ns3::UdpSocketFactory", InetSocketAddress(wifiInterfaces.GetAddress (1), dlPort2)); //OnOffApplication, UDP traffic, Please refer the ns-3 API
+    OnOffHelper onOffHelper2("ns3::UdpSocketFactory", InetSocketAddress(wifiInterfaces.GetAddress (0), dlPort2)); //OnOffApplication, UDP traffic, Please refer the ns-3 API
     onOffHelper2.SetAttribute("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=5000]"));
     onOffHelper2.SetAttribute("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
     onOffHelper2.SetAttribute("DataRate", DataRateValue(DataRate("1.0Mbps"))); //Traffic Bit Rate
     onOffHelper2.SetAttribute("PacketSize", UintegerValue(1000));
-    onOffApp2.Add(onOffHelper2.Install(stas.Get(2)));
+    onOffApp2.Add(onOffHelper2.Install(stas.Get(1)));
 
     //######################################################
     // OnOffHelper onOffHelper2("ns3::UdpSocketFactory", InetSocketAddress(wifiInterfaces.GetAddress (3), dlPort)); //OnOffApplication, UDP traffic, Please refer the ns-3 API
@@ -209,9 +215,9 @@ ApplicationContainer onOffApp2; // For sending from Node(2) to Node(1)
     // onOffApp2.Add(onOffHelper2.Install(stas.Get(2)));  
  
     
-     //Receiver socket on Sta2
-    TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-    Ptr<Socket> recvSink = Socket::CreateSocket (stas.Get (1), tid);
+     //Receiver socket on Sta1
+    TypeId tid1 = TypeId::LookupByName ("ns3::UdpSocketFactory");
+    Ptr<Socket> recvSink = Socket::CreateSocket (stas.Get (1), tid1);
     InetSocketAddress local = InetSocketAddress (wifiInterfaces.GetAddress (1), dlPort1);
     bool ipRecvTos = true;
     recvSink->SetIpRecvTos (ipRecvTos);
@@ -220,12 +226,12 @@ ApplicationContainer onOffApp2; // For sending from Node(2) to Node(1)
     recvSink->Bind (local);
 
     //####################################################################
-    ////Receiver socket on Sta4
+    ////Receiver socket on Sta2
     TypeId tid2 = TypeId::LookupByName ("ns3::UdpSocketFactory");
     Ptr<Socket> recvSink2 = Socket::CreateSocket (stas.Get (1), tid2);
     InetSocketAddress local2 = InetSocketAddress (wifiInterfaces.GetAddress (1), dlPort2);
     bool ipRecvTos2 = true;
-    recvSink->SetIpRecvTos (ipRecvTos2);
+    recvSink2->SetIpRecvTos (ipRecvTos2);
     bool ipRecvTtl2 = true;
     recvSink2->SetIpRecvTtl (ipRecvTtl2);
     recvSink2->Bind (local2);
@@ -238,7 +244,39 @@ ApplicationContainer onOffApp2; // For sending from Node(2) to Node(1)
    phy.EnablePcap ("WIFI_STA", stas, true); 
    phy.EnablePcap ("WIFI_AP", ap, true); 
 
+
+    // 8. Install FlowMonitor on all nodes
+  FlowMonitorHelper flowmon;
+  Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
+
   Simulator::Run ();
+
+// 10. Print per flow statistics
+  monitor->CheckForLostPackets ();
+  Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
+  FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats ();
+  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
+    {
+      // first 2 FlowIds are for ECHO apps, we don't want to display them
+      //
+      // Duration for throughput measurement is 9.0 seconds, since
+      //   StartTime of the OnOffApplication is at about "second 1"
+      // and
+      //   Simulator::Stops at "second 10".
+      if (i->first > 2)
+        {
+          Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+          std::cout << "Flow " << i->first - 2 << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
+          std::cout << "  Tx Packets: " << i->second.txPackets << "\n";
+          std::cout << "  Tx Bytes:   " << i->second.txBytes << "\n";
+          std::cout << "  TxOffered:  " << i->second.txBytes * 8.0 / 9.0 / 1000 / 1000  << " Mbps\n";
+          std::cout << "  Rx Packets: " << i->second.rxPackets << "\n";
+          std::cout << "  Rx Bytes:   " << i->second.rxBytes << "\n";
+          std::cout << "  Throughput: " << i->second.rxBytes * 8.0 / 9.0 / 1000 / 1000  << " Mbps\n";
+        }
+    }
+
+
   Simulator::Destroy ();
 return 0;
 };
