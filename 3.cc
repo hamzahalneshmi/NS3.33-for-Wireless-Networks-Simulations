@@ -175,7 +175,7 @@ main (int argc, char *argv[])
   stack.Install (ap);
   stack.Install (stas);
   Ipv4AddressHelper address;
-
+  cout<<"testing the stack of protocols";
  /////////////////////////////Ip addresation/////////////////////////////  
   address.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer wifiInterfaces;
