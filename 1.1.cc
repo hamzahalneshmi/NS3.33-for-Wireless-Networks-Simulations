@@ -176,7 +176,7 @@ main (int argc, char *argv[])
   wifiInterfaces = address.Assign (staDevices);
   
 /////////////////////////////Application part///////////////////////////// 
-   
+  cout<<"testing the Application Part"; 
   uint16_t dlPort = 1000;
    
     ApplicationContainer onOffApp1; // For STA 1 to STA 2
