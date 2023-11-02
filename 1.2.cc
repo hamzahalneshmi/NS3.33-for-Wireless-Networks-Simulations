@@ -157,7 +157,7 @@ main (int argc, char *argv[])
       mobility.SetPositionAllocator (positionAllocAP);
       mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
       mobility.Install (ap);
-  
+      cout<<"this part of the code is deployed successfully";  
 /////////////////////////////Stack of protocols///////////////////////////// 
 
   // Set up internet stack
