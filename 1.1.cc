@@ -171,7 +171,7 @@ main (int argc, char *argv[])
   address.SetBase ("10.1.1.0", "255.255.255.0");
   Ipv4InterfaceContainer wifiInterfaces;
   Ipv4InterfaceContainer wifiAPInterface;
-   
+  cout<<"IP Addresses Configured"; 
   wifiAPInterface  = address.Assign (apDevices);  
   wifiInterfaces = address.Assign (staDevices);
   
